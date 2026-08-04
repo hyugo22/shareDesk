@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hyugo22/sharedesk/backend/internal/auth"
-	"github.com/hyugo22/sharedesk/backend/internal/bootstrap"
 	"github.com/hyugo22/sharedesk/backend/internal/ca"
 	"github.com/hyugo22/sharedesk/backend/internal/config"
 	appcrypto "github.com/hyugo22/sharedesk/backend/internal/crypto"
@@ -42,9 +41,9 @@ func main() {
 
 	repos := repository.New(pool)
 
-	if err := bootstrap.EnsureInitialAdmin(ctx, repos); err != nil {
-		log.Fatalf("bootstrap admin: %v", err)
-	}
+	// Le premier compte administrateur est créé depuis l'assistant de
+	// configuration initiale du frontend (GET/POST /api/v1/setup), pas ici :
+	// voir internal/httpapi/handlers_setup.go.
 
 	sealer, err := appcrypto.NewSealer(cfg.AppEncryptionKey)
 	if err != nil {

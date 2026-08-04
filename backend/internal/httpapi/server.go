@@ -27,6 +27,7 @@ type Server struct {
 	directory   directory.Provider
 	loginLimit  *ratelimit.Limiter
 	enrollLimit *ratelimit.Limiter
+	setupLimit  *ratelimit.Limiter
 
 	accessTTL  time.Duration
 	refreshTTL time.Duration
@@ -42,6 +43,7 @@ func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer
 		directory:   directory.LocalProvider{},
 		loginLimit:  ratelimit.New(10, time.Minute),
 		enrollLimit: ratelimit.New(20, time.Minute),
+		setupLimit:  ratelimit.New(10, time.Minute),
 		accessTTL:   accessTTL,
 		refreshTTL:  refreshTTL,
 	}
@@ -57,6 +59,9 @@ func (s *Server) Routes() http.Handler {
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/setup/status", s.handleSetupStatus)
+		r.Post("/setup", s.rateLimited(s.setupLimit, s.handleSetup))
+
 		r.Post("/auth/login", s.rateLimited(s.loginLimit, s.handleLogin))
 		r.Post("/auth/refresh", s.handleRefresh)
 		r.Post("/auth/logout", s.handleLogout)

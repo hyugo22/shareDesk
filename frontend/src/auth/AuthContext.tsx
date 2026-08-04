@@ -8,6 +8,8 @@ interface AuthState {
   login: (email: string, password: string, totpCode?: string) => Promise<void>;
   logout: () => void;
   hasPermission: (perm: string) => boolean;
+  /** Adopte une paire de tokens déjà émise (ex: après l'assistant de configuration initiale) sans repasser par /auth/login. */
+  applySession: (accessToken: string, refreshToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -35,14 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadMe]);
 
+  const applySession = useCallback(async (accessToken: string, refreshToken: string) => {
+    setTokens(accessToken, refreshToken);
+    await loadMe();
+  }, [loadMe]);
+
   const login = useCallback(async (email: string, password: string, totpCode?: string) => {
     const data = await apiJSON<{ access_token: string; refresh_token: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password, totp_code: totpCode ?? "" }),
     });
-    setTokens(data.access_token, data.refresh_token);
-    await loadMe();
-  }, [loadMe]);
+    await applySession(data.access_token, data.refresh_token);
+  }, [applySession]);
 
   const logout = useCallback(() => {
     const refresh = getRefreshToken();
@@ -56,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPermission = useCallback((perm: string) => !!user?.permissions?.includes(perm), [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasPermission }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, hasPermission, applySession }}>
       {children}
     </AuthContext.Provider>
   );

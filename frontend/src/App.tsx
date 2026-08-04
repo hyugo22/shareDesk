@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { apiJSON } from "./api/client";
 import Layout from "./components/Layout";
 import { RequireAuth, RequirePermission } from "./components/RequireAuth";
+import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import AgentList from "./pages/AgentList";
 import SessionViewer from "./pages/SessionViewer";
@@ -11,9 +14,37 @@ import AgentsAdmin from "./pages/admin/AgentsAdmin";
 import AuditLogs from "./pages/admin/AuditLogs";
 import LdapSettings from "./pages/admin/LdapSettings";
 
+/** true tant qu'aucun utilisateur n'existe en base : l'assistant de
+ * configuration initiale doit alors passer avant toute autre page. */
+function useNeedsSetup() {
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    apiJSON<{ needs_setup: boolean }>("/setup/status")
+      .then((r) => setNeedsSetup(r.needs_setup))
+      .catch(() => setNeedsSetup(false)); // en cas d'erreur, ne pas bloquer l'accès au login
+  }, []);
+
+  return needsSetup;
+}
+
 export default function App() {
+  const needsSetup = useNeedsSetup();
+
+  if (needsSetup === null) return <div className="centered">Chargement…</div>;
+
+  if (needsSetup) {
+    return (
+      <Routes>
+        <Route path="/setup" element={<Setup />} />
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
+      <Route path="/setup" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
 
       <Route element={<RequireAuth><Layout /></RequireAuth>}>

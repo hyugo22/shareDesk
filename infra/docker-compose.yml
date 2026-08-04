@@ -46,8 +46,6 @@ services:
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
       TURN_REALM: ${TURN_REALM:-sharedesk.local}
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
-      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
     volumes:
       # Données de la CA interne mTLS : la perte de ce volume révoque de facto
       # tous les agents enrôlés (la CA doit être régénérée). À sauvegarder.
