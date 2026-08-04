@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS ldap_config;
+DROP TABLE IF EXISTS app_settings;
+DROP TRIGGER IF EXISTS trg_audit_logs_no_delete ON audit_logs;
+DROP TRIGGER IF EXISTS trg_audit_logs_no_update ON audit_logs;
+DROP FUNCTION IF EXISTS reject_audit_log_mutation();
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS control_sessions;
+DROP TABLE IF EXISTS agent_cert_revocations;
+ALTER TABLE IF EXISTS enrollment_tokens DROP CONSTRAINT IF EXISTS fk_enrollment_tokens_agent;
+DROP TABLE IF EXISTS agents;
+DROP TABLE IF EXISTS enrollment_tokens;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
