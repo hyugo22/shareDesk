@@ -43,12 +43,13 @@ export default function AuditLogs() {
       </div>
       <table className="table">
         <thead>
-          <tr><th>Date</th><th>Type</th><th>Action</th><th>Cible</th><th>IP</th></tr>
+          <tr><th>Date</th><th>Acteur</th><th>Type</th><th>Action</th><th>Cible</th><th>IP</th></tr>
         </thead>
         <tbody>
           {logs.map((l) => (
             <tr key={l.id}>
               <td>{new Date(l.occurred_at).toLocaleString()}</td>
+              <td>{l.actor_name ?? "—"}</td>
               <td>{l.actor_type}</td>
               <td>{l.action}</td>
               <td>{l.target_type ? `${l.target_type}:${l.target_id}` : "—"}</td>

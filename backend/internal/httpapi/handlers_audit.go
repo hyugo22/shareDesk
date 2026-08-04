@@ -39,14 +39,14 @@ func (s *Server) handleListAuditLogs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", `attachment; filename="audit-logs.csv"`)
 		cw := csv.NewWriter(w)
-		_ = cw.Write([]string{"id", "occurred_at", "actor_type", "actor_user_id", "action", "target_type", "target_id", "ip_address"})
+		_ = cw.Write([]string{"id", "occurred_at", "actor_type", "actor_name", "actor_user_id", "action", "target_type", "target_id", "ip_address"})
 		for _, l := range logs {
 			actorUserID := ""
 			if l.ActorUserID != nil {
 				actorUserID = *l.ActorUserID
 			}
 			_ = cw.Write([]string{
-				fmt.Sprintf("%d", l.ID), l.OccurredAt.Format(time.RFC3339), l.ActorType,
+				fmt.Sprintf("%d", l.ID), l.OccurredAt.Format(time.RFC3339), l.ActorType, l.ActorName,
 				actorUserID, l.Action, l.TargetType, l.TargetID, l.IPAddress,
 			})
 		}

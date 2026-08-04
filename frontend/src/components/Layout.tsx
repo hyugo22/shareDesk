@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import LdapBanner from "./LdapBanner";
 
 export default function Layout() {
   const { user, logout, hasPermission } = useAuth();
@@ -20,6 +21,7 @@ export default function Layout() {
           <button onClick={logout}>Déconnexion</button>
         </div>
       </header>
+      <LdapBanner />
       <main className="content">
         <Outlet />
       </main>

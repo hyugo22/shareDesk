@@ -55,15 +55,21 @@ func (r *AuditRepo) List(ctx context.Context, f AuditFilter) ([]models.AuditLog,
 	if f.Limit <= 0 || f.Limit > 1000 {
 		f.Limit = 200
 	}
+	// Résout le nom lisible de l'acteur (utilisateur ou agent) plutôt que de
+	// n'exposer que son UUID en base, pour que les logs d'audit restent
+	// exploitables sans avoir à recouper manuellement avec la base.
 	rows, err := r.db.Query(ctx, `
-		SELECT id, occurred_at, actor_type, actor_user_id, actor_agent_id, action,
-		       coalesce(target_type,''), coalesce(target_id,''), host(ip_address), details
-		FROM audit_logs
-		WHERE ($1 = '' OR actor_user_id::text = $1)
-		  AND ($2 = '' OR action = $2)
-		  AND ($3::timestamptz IS NULL OR occurred_at >= $3)
-		  AND ($4::timestamptz IS NULL OR occurred_at <= $4)
-		ORDER BY occurred_at DESC
+		SELECT al.id, al.occurred_at, al.actor_type, al.actor_user_id, al.actor_agent_id, al.action,
+		       coalesce(al.target_type,''), coalesce(al.target_id,''), host(al.ip_address), al.details,
+		       coalesce(nullif(u.display_name, ''), nullif(u.email, ''), nullif(ag.name, ''))
+		FROM audit_logs al
+		LEFT JOIN users u ON u.id = al.actor_user_id
+		LEFT JOIN agents ag ON ag.id = al.actor_agent_id
+		WHERE ($1 = '' OR al.actor_user_id::text = $1)
+		  AND ($2 = '' OR al.action = $2)
+		  AND ($3::timestamptz IS NULL OR al.occurred_at >= $3)
+		  AND ($4::timestamptz IS NULL OR al.occurred_at <= $4)
+		ORDER BY al.occurred_at DESC
 		LIMIT $5 OFFSET $6`,
 		f.ActorUserID, f.Action, f.From, f.To, f.Limit, f.Offset)
 	if err != nil {
@@ -74,15 +80,20 @@ func (r *AuditRepo) List(ctx context.Context, f AuditFilter) ([]models.AuditLog,
 	var logs []models.AuditLog
 	for rows.Next() {
 		var l models.AuditLog
-		var actorUserID, actorAgentID, ip *string
+		var actorUserID, actorAgentID, ip, actorName *string
 		var detailsRaw []byte
 		if err := rows.Scan(&l.ID, &l.OccurredAt, &l.ActorType, &actorUserID, &actorAgentID,
-			&l.Action, &l.TargetType, &l.TargetID, &ip, &detailsRaw); err != nil {
+			&l.Action, &l.TargetType, &l.TargetID, &ip, &detailsRaw, &actorName); err != nil {
 			return nil, err
 		}
 		l.ActorUserID, l.ActorAgentID = actorUserID, actorAgentID
 		if ip != nil {
 			l.IPAddress = *ip
+		}
+		if actorName != nil {
+			l.ActorName = *actorName
+		} else if l.ActorType == "system" {
+			l.ActorName = "Système"
 		}
 		if len(detailsRaw) > 0 {
 			_ = json.Unmarshal(detailsRaw, &l.Details)

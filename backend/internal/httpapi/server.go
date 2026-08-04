@@ -69,6 +69,11 @@ func (s *Server) Routes() http.Handler {
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 
 	r.Route("/api/v1", func(r chi.Router) {
+		// Réponses API jamais mises en cache par le navigateur : évite qu'une
+		// page affiche des données obsolètes tant qu'un rechargement forcé
+		// n'a pas été fait.
+		r.Use(noStoreCache)
+
 		r.Get("/setup/status", s.handleSetupStatus)
 		r.Post("/setup", s.rateLimited(s.setupLimit, s.handleSetup))
 

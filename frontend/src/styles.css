@@ -47,6 +47,28 @@ body {
   color: var(--muted);
 }
 
+/* Formulaires de paramètres (ex: intégration LDAP) : un champ par ligne. */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-width: 480px;
+}
+
+.settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.settings-form label.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 input, select, button {
   font: inherit;
   padding: 0.5rem;
@@ -85,6 +107,26 @@ button + button { margin-left: 0.5rem; }
 .user-menu { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); }
 
 .content { padding: 1.5rem; }
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: #3a3212;
+  border-bottom: 1px solid var(--border);
+  color: #f0d98c;
+  font-size: 0.9rem;
+}
+.banner span { flex: 1; }
+.banner button {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+.banner .banner-dismiss { border-color: transparent; opacity: 0.75; }
 
 .table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
 .table th, .table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }

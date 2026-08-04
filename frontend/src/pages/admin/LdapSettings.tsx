@@ -58,8 +58,8 @@ export default function LdapSettings() {
         Le mot de passe n'est jamais réaffiché une fois enregistré.
       </p>
       {error && <p className="error">{error}</p>}
-      <form className="card" onSubmit={save}>
-        <label>
+      <form className="card settings-form" onSubmit={save}>
+        <label className="checkbox-row">
           <input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })} />
           Intégration activée
         </label>

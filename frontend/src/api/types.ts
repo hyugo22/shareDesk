@@ -75,6 +75,7 @@ export interface AuditLog {
   occurred_at: string;
   actor_type: string;
   actor_user_id?: string;
+  actor_name?: string;
   action: string;
   target_type?: string;
   target_id?: string;
