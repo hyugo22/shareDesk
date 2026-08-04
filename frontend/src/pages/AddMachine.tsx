@@ -2,6 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiJSON } from "../api/client";
 
+// Piste de téléchargement "roulante" publiée par la CI à chaque build réussi
+// de main (tag agent-latest, pas une release versionnée) — voir le job
+// publish-agent-release dans .github/workflows/ci.yml.
+const RELEASE_BASE = "https://github.com/hyugo22/shareDesk/releases/latest/download";
+
 export default function AddMachine() {
   const navigate = useNavigate();
   const [description, setDescription] = useState("");
@@ -83,12 +88,34 @@ export default function AddMachine() {
             <button type="button" onClick={() => copy(token)}>Copier</button>
           </div>
 
-          <p>Sur le poste à enrôler, exécute l'agent avec ces variables d'environnement :</p>
+          <h2>1. Télécharger l'agent</h2>
+          <div className="button-row">
+            <a className="button-link" href={`${RELEASE_BASE}/ShareDeskAgent.msi`}>Windows (installeur .msi)</a>
+            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-windows-amd64.exe`}>Windows (.exe seul)</a>
+            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-linux-amd64`}>Linux (amd64)</a>
+            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-darwin-arm64`}>macOS (Apple Silicon)</a>
+          </div>
+          <p className="hint">
+            Publiés automatiquement par la CI à chaque mise à jour de la plateforme.
+          </p>
+
+          <h2>2. Installer</h2>
+          <p><strong>Windows — installeur MSI (silencieux, déployable par GPO)</strong></p>
           <pre className="code-block">
-{`SERVER_URL=https://${serverHost}:8080
-SERVER_MTLS_HOST=${serverHost}:8443
-ENROLLMENT_TOKEN=${token}
-./sharedesk-agent`}
+{`msiexec /i ShareDeskAgent.msi /qn ^
+  SERVER_URL="https://${serverHost}:8080" ^
+  MTLS_HOST="${serverHost}:8443" ^
+  ENROLLMENT_TOKEN="${token}"`}
+          </pre>
+          <p className="hint">Installe et démarre automatiquement le service Windows « ShareDesk Agent ».</p>
+
+          <p><strong>Linux / macOS — exécution manuelle</strong></p>
+          <pre className="code-block">
+{`chmod +x sharedesk-agent-*
+SERVER_URL=https://${serverHost}:8080 \\
+SERVER_MTLS_HOST=${serverHost}:8443 \\
+ENROLLMENT_TOKEN=${token} \\
+./sharedesk-agent-linux-amd64`}
           </pre>
           <p className="hint">
             Adapte les ports si ton déploiement n'utilise pas les valeurs par défaut.

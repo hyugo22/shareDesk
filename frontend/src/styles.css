@@ -161,6 +161,19 @@ button + button { margin-left: 0.5rem; }
 .list li { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; }
 .list li.selected button:first-child { color: var(--accent); font-weight: 700; background: none; }
 
+.button-link {
+  display: inline-block;
+  cursor: pointer;
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+.button-link:hover { opacity: 0.9; }
+
 .token-display {
   display: flex;
   align-items: center;
