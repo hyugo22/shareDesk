@@ -1,0 +1,13 @@
+
+# Chargé automatiquement par `docker compose` en plus de docker-compose.yml
+# pour le développement local (accès direct à PostgreSQL, TLS désactivé pour
+# la connexion applicative interne). Ne pas utiliser tel quel en production.
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  backend:
+    environment:
+      POSTGRES_SSLMODE: disable

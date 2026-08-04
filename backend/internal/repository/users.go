@@ -27,7 +27,7 @@ func (r *UserRepo) Create(ctx context.Context, u *models.User) error {
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	return r.scanOne(ctx, `
 		SELECT u.id, u.email, u.display_name, u.password_hash, u.role_id, r.name,
-		       u.mfa_enabled, u.mfa_totp_secret_enc, u.is_active, u.failed_login_attempts,
+		       u.mfa_enabled, coalesce(u.mfa_totp_secret_enc, ''), u.is_active, u.failed_login_attempts,
 		       u.locked_until, u.last_login_at, u.created_at, u.updated_at
 		FROM users u JOIN roles r ON r.id = u.role_id
 		WHERE u.email = $1`, email)
@@ -36,7 +36,7 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*models.User, 
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*models.User, error) {
 	return r.scanOne(ctx, `
 		SELECT u.id, u.email, u.display_name, u.password_hash, u.role_id, r.name,
-		       u.mfa_enabled, u.mfa_totp_secret_enc, u.is_active, u.failed_login_attempts,
+		       u.mfa_enabled, coalesce(u.mfa_totp_secret_enc, ''), u.is_active, u.failed_login_attempts,
 		       u.locked_until, u.last_login_at, u.created_at, u.updated_at
 		FROM users u JOIN roles r ON r.id = u.role_id
 		WHERE u.id = $1`, id)

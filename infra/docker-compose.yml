@@ -1,0 +1,98 @@
+
+name: sharedesk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sharedesk}
+      POSTGRES_USER: ${POSTGRES_USER:-sharedesk_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-sharedesk_app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [sharedesk]
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: ghcr.io/hyugo22/sharedesk-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-sharedesk}
+      POSTGRES_USER: ${POSTGRES_USER:-sharedesk_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
+      BACKEND_HTTP_ADDR: ":8080"
+      BACKEND_MTLS_ADDR: ":8443"
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8080}
+      BACKEND_AGENT_HOSTNAMES: ${BACKEND_AGENT_HOSTNAMES:-localhost}
+      JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET:?}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?}
+      CA_KEY_PASSPHRASE: ${CA_KEY_PASSPHRASE:?}
+      CA_DATA_DIR: /data/ca
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
+      TURN_REALM: ${TURN_REALM:-sharedesk.local}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      # Données de la CA interne mTLS : la perte de ce volume révoque de facto
+      # tous les agents enrôlés (la CA doit être régénérée). À sauvegarder.
+      - ca_data:/data/ca
+    ports:
+      - "${BACKEND_HTTP_PORT:-8080}:8080"
+      - "${BACKEND_MTLS_PORT:-8443}:8443"
+    networks: [sharedesk]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${FRONTEND_API_BASE_URL:-http://localhost:8080/api/v1}
+        VITE_WS_BASE_URL: ${FRONTEND_WS_BASE_URL:-ws://localhost:8080/api/v1}
+    image: ghcr.io/hyugo22/sharedesk-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"
+    networks: [sharedesk]
+
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    # Le realm et le secret partagé (credentials TURN éphémères, voir
+    # docs/SECURITY.md) sont passés en ligne de commande — seule cette valeur
+    # est un secret, le reste de la configuration statique vit dans turnserver.conf.
+    command:
+      - "-c"
+      - "/etc/coturn/turnserver.conf"
+      - "--realm=${TURN_REALM:-sharedesk.local}"
+      - "--static-auth-secret=${TURN_SHARED_SECRET:?TURN_SHARED_SECRET requis}"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49152-49452:49152-49452/udp"
+    networks: [sharedesk]
+
+networks:
+  sharedesk: {}
+
+volumes:
+  postgres_data: {}
+  ca_data: {}
