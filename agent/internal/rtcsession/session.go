@@ -31,9 +31,11 @@ const frameInterval = 150 * time.Millisecond // ~6-7 fps
 
 type inputEvent struct {
 	Type   string `json:"type"` // mousemove | mousedown | mouseup | wheel | keydown | keyup
-	X, Y   int32  `json:"x,omitempty"`
+	X      int32  `json:"x,omitempty"`
+	Y      int32  `json:"y,omitempty"`
 	Button string `json:"button,omitempty"`
-	DX, DY int32  `json:"dx,omitempty"`
+	DX     int32  `json:"dx,omitempty"`
+	DY     int32  `json:"dy,omitempty"`
 	Key    uint16 `json:"key,omitempty"`
 }
 

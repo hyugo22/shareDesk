@@ -136,8 +136,15 @@ func (r *UserRepo) Delete(ctx context.Context, id string) (anonymized bool, err 
 		return false, nil
 	}
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-		return true, r.anonymize(ctx, id)
+	if errors.As(err, &pgErr) {
+		// 23503 : violation de clé étrangère standard (aucun trigger dessus).
+		// P0001 : cas réel ici — la FK audit_logs.actor_user_id a ON DELETE
+		// SET NULL, ce qui déclenche un UPDATE sur audit_logs, intercepté et
+		// rejeté par trg_audit_logs_no_update (RAISE EXCEPTION sans ERRCODE
+		// explicite ⇒ P0001, pas 23503).
+		if pgErr.Code == "23503" || pgErr.Code == "P0001" {
+			return true, r.anonymize(ctx, id)
+		}
 	}
 	return false, err
 }

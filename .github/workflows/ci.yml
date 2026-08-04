@@ -77,6 +77,46 @@ jobs:
           CGO_ENABLED: ${{ matrix.cgo }}
         run: go build -o /tmp/sharedesk-agent ./cmd/agent
 
+  windows-agent-installer:
+    name: Agent — Windows service + MSI installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: agent/go.sum
+
+      - name: Build agent binary (windows/amd64)
+        working-directory: agent
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: go build -o ../installer/windows/sharedesk-agent.exe ./cmd/agent
+
+      # WiX ne garantit un comportement correct que sur Windows (voir
+      # installer/windows/README.md) : ce job tourne donc sur un runner
+      # windows-latest plutôt que dans les conteneurs Linux du reste de la CI.
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build MSI
+        working-directory: installer/windows
+        run: |
+          wix build ShareDeskAgent.wxs `
+            -d AgentVersion=0.1.${{ github.run_number }} `
+            -d AgentBinaryPath=sharedesk-agent.exe `
+            -o ShareDeskAgent.msi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShareDeskAgent-windows-installer
+          path: |
+            installer/windows/ShareDeskAgent.msi
+            installer/windows/sharedesk-agent.exe
+          retention-days: 30
+
   docker-images:
     name: Build & push Docker images
     runs-on: ubuntu-latest

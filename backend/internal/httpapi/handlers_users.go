@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -136,6 +137,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	anonymized, err := s.repos.Users.Delete(r.Context(), id)
 	if err != nil {
+		log.Printf("suppression utilisateur %s: %v", id, err)
 		writeError(w, http.StatusInternalServerError, "erreur interne")
 		return
 	}

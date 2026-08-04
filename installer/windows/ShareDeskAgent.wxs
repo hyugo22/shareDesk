@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Installeur MSI de l'agent ShareDesk (Windows).
+
+  Déploiement silencieux (GPO ou ligne de commande) :
+    msiexec /i ShareDeskAgent.msi /qn ^
+      SERVER_URL="https://sharedesk.example.com:8080" ^
+      MTLS_HOST="sharedesk.example.com:8443" ^
+      ENROLLMENT_TOKEN="<token à usage unique généré depuis l'interface>"
+
+  L'installation copie le binaire puis délègue l'enrôlement et
+  l'enregistrement du service Windows à `sharedesk-agent.exe install`
+  (github.com/kardianos/service) — voir agent/cmd/agent/main.go.
+  ENROLLMENT_TOKEN n'est utilisé qu'une fois, à l'installation ; il n'est
+  jamais persisté par le MSI ni par l'agent au-delà de l'échange initial.
+
+  Compilé via WiX Toolset v5 (`wix build`), sur un runner Windows (WiX ne
+  garantit pas de fonctionner correctement hors Windows) — voir
+  .github/workflows/ci.yml, job windows-agent-installer.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="ShareDesk Agent"
+           Manufacturer="ShareDesk"
+           Version="$(var.AgentVersion)"
+           UpgradeCode="8f2b6f2e-2b7a-4e2a-9b8e-6f6b1a5c9d31"
+           Language="1036">
+
+    <SummaryInformation Description="Agent de prise en main à distance ShareDesk" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de ShareDesk Agent est déjà installée." />
+
+    <!-- Propriétés fournies en ligne de commande / par la GPO (msiexec ... PROP=valeur) -->
+    <Property Id="SERVER_URL" Value="" />
+    <Property Id="MTLS_HOST" Value="" />
+    <Property Id="ENROLLMENT_TOKEN" Secure="yes" Value="" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="ShareDesk Agent" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="AgentFiles" Directory="INSTALLFOLDER">
+      <Component Id="AgentBinary" Guid="6b6e3f9a-6c9d-4b8e-9d2c-6f3a2b7e8a41">
+        <File Id="AgentExe" Source="$(var.AgentBinaryPath)" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="Agent ShareDesk" Level="1">
+      <ComponentGroupRef Id="AgentFiles" />
+    </Feature>
+
+    <!-- Enrôlement + enregistrement du service, une fois les fichiers copiés. -->
+    <CustomAction Id="EnrollAndInstallService"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]sharedesk-agent.exe&quot; install --server-url=&quot;[SERVER_URL]&quot; --mtls-host=&quot;[MTLS_HOST]&quot; --token=&quot;[ENROLLMENT_TOKEN]&quot;"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <!-- Arrêt propre du service avant suppression des fichiers, à la désinstallation. -->
+    <CustomAction Id="UninstallService"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]sharedesk-agent.exe&quot; uninstall"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="EnrollAndInstallService" After="InstallFiles" Condition="NOT REMOVE AND ENROLLMENT_TOKEN &lt;&gt; &quot;&quot;" />
+      <Custom Action="UninstallService" Before="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot;" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

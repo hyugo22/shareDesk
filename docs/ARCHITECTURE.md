@@ -89,7 +89,9 @@ Deux options possibles :
 sharedesk/
 ├── backend/          # API Go, signaling WS, mini-CA, service crypto
 ├── frontend/          # React + TS
-├── agent/             # Agent Go (capture, injection, client WebRTC/mTLS)
+├── agent/             # Agent Go (capture, injection, client WebRTC/mTLS, service)
+├── installer/
+│   └── windows/       # Installeur MSI (WiX v5) — service Windows via kardianos/service
 ├── infra/
 │   ├── docker-compose.yml
 │   ├── docker-compose.override.yml
