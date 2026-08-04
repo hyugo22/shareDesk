@@ -18,6 +18,7 @@ agent/bin/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/tsconfig.tsbuildinfo
 npm-debug.log*
 
 # IDE / OS

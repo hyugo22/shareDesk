@@ -91,6 +91,7 @@ func (s *Server) Routes() http.Handler {
 			r.With(s.RequirePermission("roles.manage")).Get("/roles", s.handleListRoles)
 			r.With(s.RequirePermission("roles.manage")).Post("/roles", s.handleCreateRole)
 			r.With(s.RequirePermission("roles.manage")).Delete("/roles/{id}", s.handleDeleteRole)
+			r.With(s.RequirePermission("roles.manage")).Get("/roles/{id}/permissions", s.handleGetRolePermissions)
 			r.With(s.RequirePermission("roles.manage")).Put("/roles/{id}/permissions", s.handleSetRolePermissions)
 			r.With(s.RequirePermission("roles.manage")).Get("/permissions", s.handleListPermissions)
 

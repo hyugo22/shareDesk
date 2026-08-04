@@ -56,6 +56,16 @@ func (s *Server) handleDeleteRole(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) handleGetRolePermissions(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	perms, err := s.repos.Roles.PermissionsForRole(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "erreur interne")
+		return
+	}
+	writeJSON(w, http.StatusOK, perms)
+}
+
 type setRolePermissionsRequest struct {
 	Permissions []string `json:"permissions"`
 }
