@@ -68,7 +68,7 @@ func main() {
 		}
 	})
 
-	server := httpapi.NewServer(repos, jwtIssuer, sealer, internalCA, hub, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	server := httpapi.NewServer(repos, jwtIssuer, sealer, internalCA, hub, cfg.AccessTokenTTL, cfg.RefreshTokenTTL, cfg.CORSAllowedOrigins)
 
 	go staleAgentSweeper(repos)
 

@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/hyugo22/sharedesk/backend/internal/crypto"
@@ -12,6 +13,11 @@ import (
 type Config struct {
 	HTTPAddr  string
 	PublicURL string
+
+	// Origines autorisées pour les requêtes CORS du frontend (le navigateur
+	// et l'API ne sont pas nécessairement sur la même origine, ex. dev local
+	// avec des ports différents). Vide = aucune origine autorisée.
+	CORSAllowedOrigins []string
 
 	PostgresDSN string
 
@@ -35,6 +41,7 @@ func Load() (*Config, error) {
 		TURNRealm:        getEnv("TURN_REALM", "sharedesk.local"),
 		TURNSharedSecret: os.Getenv("TURN_SHARED_SECRET"),
 	}
+	cfg.CORSAllowedOrigins = splitAndTrim(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:8081"))
 
 	var err error
 	if cfg.AccessTokenTTL, err = time.ParseDuration(getEnv("ACCESS_TOKEN_TTL", "15m")); err != nil {
@@ -68,6 +75,17 @@ func buildPostgresDSN() string {
 	sslmode := getEnv("POSTGRES_SSLMODE", "require")
 
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, pass, host, port, db, sslmode)
+}
+
+func splitAndTrim(csv string) []string {
+	parts := strings.Split(csv, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func getEnv(key, fallback string) string {

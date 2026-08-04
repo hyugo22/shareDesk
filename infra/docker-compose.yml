@@ -38,6 +38,9 @@ services:
       BACKEND_MTLS_ADDR: ":8443"
       BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8080}
       BACKEND_AGENT_HOSTNAMES: ${BACKEND_AGENT_HOSTNAMES:-localhost}
+      # Origine du frontend, pour l'en-tête CORS (voir FRONTEND_PORT ci-dessous
+      # si vous changez le port publié du frontend, mettez celui-ci à jour aussi).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
       JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET:?}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?}
       CA_KEY_PASSPHRASE: ${CA_KEY_PASSPHRASE:?}

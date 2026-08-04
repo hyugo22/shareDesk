@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 
 	"github.com/hyugo22/sharedesk/backend/internal/auth"
 	"github.com/hyugo22/sharedesk/backend/internal/ca"
@@ -29,23 +30,25 @@ type Server struct {
 	enrollLimit *ratelimit.Limiter
 	setupLimit  *ratelimit.Limiter
 
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	accessTTL      time.Duration
+	refreshTTL     time.Duration
+	allowedOrigins []string
 }
 
-func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer *appcrypto.Sealer, caInst *ca.CA, hub *ws.Hub, accessTTL, refreshTTL time.Duration) *Server {
+func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer *appcrypto.Sealer, caInst *ca.CA, hub *ws.Hub, accessTTL, refreshTTL time.Duration, allowedOrigins []string) *Server {
 	return &Server{
-		repos:       repos,
-		jwt:         jwtIssuer,
-		sealer:      sealer,
-		ca:          caInst,
-		hub:         hub,
-		directory:   directory.LocalProvider{},
-		loginLimit:  ratelimit.New(10, time.Minute),
-		enrollLimit: ratelimit.New(20, time.Minute),
-		setupLimit:  ratelimit.New(10, time.Minute),
-		accessTTL:   accessTTL,
-		refreshTTL:  refreshTTL,
+		repos:          repos,
+		jwt:            jwtIssuer,
+		sealer:         sealer,
+		ca:             caInst,
+		hub:            hub,
+		directory:      directory.LocalProvider{},
+		loginLimit:     ratelimit.New(10, time.Minute),
+		enrollLimit:    ratelimit.New(20, time.Minute),
+		setupLimit:     ratelimit.New(10, time.Minute),
+		accessTTL:      accessTTL,
+		refreshTTL:     refreshTTL,
+		allowedOrigins: allowedOrigins,
 	}
 }
 
@@ -55,6 +58,13 @@ func (s *Server) Routes() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   s.allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: false, // authentification par Bearer token, pas par cookie
+		MaxAge:           300,
+	}))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 
