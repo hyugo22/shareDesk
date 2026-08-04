@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiJSON } from "../../api/client";
 import type { Agent } from "../../api/types";
 
 export default function AgentsAdmin() {
+  const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [tokenDescription, setTokenDescription] = useState("");
-  const [issuedToken, setIssuedToken] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -26,30 +26,13 @@ export default function AgentsAdmin() {
     load();
   }
 
-  async function createToken() {
-    const data = await apiJSON<{ token: string; expires_in: number }>("/agents/enrollment-tokens", {
-      method: "POST",
-      body: JSON.stringify({ description: tokenDescription, ttl_minutes: 60 }),
-    });
-    setIssuedToken(data.token);
-  }
-
   return (
     <div>
       {error && <p className="error">{error}</p>}
 
-      <h2>Nouveau token d'enrôlement</h2>
-      <p className="hint">Valide 60 minutes, usage unique. À fournir à l'installateur de l'agent.</p>
-      <div className="inline-form">
-        <input placeholder="Description (ex: postes comptabilité)" value={tokenDescription} onChange={(e) => setTokenDescription(e.target.value)} />
-        <button onClick={createToken}>Générer</button>
+      <div className="button-row">
+        <button onClick={() => navigate("/agents/add")}>+ Ajouter une machine</button>
       </div>
-      {issuedToken && (
-        <div className="card token-display">
-          <code>{issuedToken}</code>
-          <p className="hint">Ce token ne sera plus jamais affiché — copiez-le maintenant.</p>
-        </div>
-      )}
 
       <h2>Agents enrôlés</h2>
       <table className="table">
@@ -67,6 +50,9 @@ export default function AgentsAdmin() {
               <td>{!a.revoked_at && <button onClick={() => revoke(a)}>Révoquer</button>}</td>
             </tr>
           ))}
+          {agents.length === 0 && (
+            <tr><td colSpan={6}>Aucun agent enrôlé.</td></tr>
+          )}
         </tbody>
       </table>
     </div>

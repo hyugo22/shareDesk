@@ -46,7 +46,12 @@ export default function AgentList() {
 
   return (
     <div>
-      <h1>Machines</h1>
+      <div className="page-header">
+        <h1>Machines</h1>
+        {hasPermission("agents.manage") && (
+          <button onClick={() => navigate("/agents/add")}>+ Ajouter une machine</button>
+        )}
+      </div>
       {error && <p className="error">{error}</p>}
       <table className="table">
         <thead>

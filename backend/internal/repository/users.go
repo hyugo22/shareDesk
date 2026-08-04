@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hyugo22/sharedesk/backend/internal/models"
@@ -112,6 +114,49 @@ func (r *UserRepo) SetMFASecret(ctx context.Context, id, encryptedSecret string,
 		UPDATE users SET mfa_totp_secret_enc = $2, mfa_enabled = $3, updated_at = now()
 		WHERE id = $1`, id, encryptedSecret, enabled)
 	return err
+}
+
+func (r *UserRepo) UpdateProfile(ctx context.Context, id, email, displayName string) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET email = $2, display_name = $3, updated_at = now() WHERE id = $1`,
+		id, email, displayName)
+	return err
+}
+
+// Delete supprime définitivement le compte si possible. Dès qu'un
+// utilisateur a une entrée dans les logs d'audit (cas quasi systématique
+// après une première connexion), la suppression physique est bloquée par la
+// contrainte de clé étrangère : audit_logs est append-only, sa référence à
+// l'utilisateur ne peut pas être détachée par un UPDATE (voir migration
+// 0001, trigger reject_audit_log_mutation). Dans ce cas, le compte est
+// anonymisé à la place : identité effacée et connexion désactivée
+// définitivement, mais la trace de ses actions passées reste intacte.
+func (r *UserRepo) Delete(ctx context.Context, id string) (anonymized bool, err error) {
+	_, err = r.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	if err == nil {
+		return false, nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return true, r.anonymize(ctx, id)
+	}
+	return false, err
+}
+
+func (r *UserRepo) anonymize(ctx context.Context, id string) error {
+	placeholderEmail := fmt.Sprintf("deleted-%s@removed.local", id)
+	// Ne correspond au format attendu par aucun hash Argon2id valide :
+	// toute tentative de connexion échouera systématiquement.
+	const unusablePasswordHash = "$argon2id$deleted"
+	_, err := r.db.Exec(ctx, `
+		UPDATE users SET
+			email = $2, display_name = 'Compte supprimé', password_hash = $3,
+			is_active = false, mfa_enabled = false, mfa_totp_secret_enc = NULL,
+			updated_at = now()
+		WHERE id = $1`, id, placeholderEmail, unusablePasswordHash)
+	if err != nil {
+		return err
+	}
+	return r.RevokeAllRefreshTokens(ctx, id)
 }
 
 func (r *UserRepo) UpdateRole(ctx context.Context, id, roleID string) error {

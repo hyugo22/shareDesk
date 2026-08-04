@@ -6,6 +6,7 @@ import { RequireAuth, RequirePermission } from "./components/RequireAuth";
 import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import AgentList from "./pages/AgentList";
+import AddMachine from "./pages/AddMachine";
 import SessionViewer from "./pages/SessionViewer";
 import AdminLayout from "./pages/admin/AdminLayout";
 import Users from "./pages/admin/Users";
@@ -49,6 +50,7 @@ export default function App() {
 
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route path="/agents" element={<AgentList />} />
+        <Route path="/agents/add" element={<RequirePermission perm="agents.manage"><AddMachine /></RequirePermission>} />
         <Route path="/sessions/:sessionId" element={<SessionViewer />} />
 
         <Route path="/admin" element={<AdminLayout />}>
