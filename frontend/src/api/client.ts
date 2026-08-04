@@ -42,7 +42,26 @@ async function parseError(res: Response): Promise<never> {
   throw new ApiError(res.status, message);
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+// Plusieurs composants indépendants (bandeau LDAP, page courante, contexte
+// d'auth...) peuvent chacun déclencher un appel API au montage et essuyer un
+// 401 simultanément tant qu'aucun access token n'est encore en mémoire. Sans
+// mutualisation, chaque 401 tentait son propre refresh : le refresh token
+// étant à usage rotatif (révoqué dès sa première utilisation côté backend),
+// le perdant de la course recevait un 401 sur SON refresh et appelait
+// clearTokens() — effaçant la session que le gagnant venait tout juste
+// d'obtenir avec succès. Un seul refresh en vol à la fois, partagé par tous.
+let refreshPromise: Promise<boolean> | null = null;
+
+function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function doRefresh(): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
   const res = await fetch(`${API_BASE}/auth/refresh`, {

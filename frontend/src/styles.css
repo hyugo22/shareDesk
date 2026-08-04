@@ -52,7 +52,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  max-width: 480px;
+  max-width: 640px;
 }
 
 .settings-form label {
@@ -68,6 +68,14 @@ body {
   align-items: center;
   gap: 0.5rem;
 }
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.button-row button { margin-left: 0; }
 
 input, select, button {
   font: inherit;
