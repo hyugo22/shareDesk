@@ -22,4 +22,4 @@ docker compose up --build
 
 ## Statut
 
-Projet en construction itérative : scaffold → auth/RBAC → agent minimal → streaming → CI/CD → intégration AD.
+Scaffold, auth/RBAC, enrôlement d'agent (mTLS), session de contrôle basique (WebRTC) et pipeline CI/CD sont en place et ont été testés de bout en bout via `docker compose up`. Voir [docs/SECURITY.md](docs/SECURITY.md) §5 pour les limitations connues de cette v1. L'intégration AD/LDAP reste au stade de point d'extension (non implémentée) — dernière étape de la roadmap.

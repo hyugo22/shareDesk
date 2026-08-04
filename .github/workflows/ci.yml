@@ -1,0 +1,148 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  # ghcr.io exige des noms d'image en minuscules ; le nom du repo GitHub
+  # (shareDesk, casse mixte) n'est donc pas réutilisé tel quel.
+  BACKEND_IMAGE: ghcr.io/hyugo22/sharedesk-backend
+  FRONTEND_IMAGE: ghcr.io/hyugo22/sharedesk-frontend
+
+jobs:
+  backend-build:
+    name: Backend — build & vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/go.sum
+      - working-directory: backend
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  frontend-build:
+    name: Frontend — build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  agent-build:
+    name: Agent — cross-compile
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            cgo: "0"
+          - goos: linux
+            goarch: amd64
+            cgo: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: agent/go.sum
+      - name: Install X11 dev headers (Linux CGO build only)
+        if: matrix.goos == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxrandr-dev
+      - working-directory: agent
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+        run: go build -o /tmp/sharedesk-agent ./cmd/agent
+
+  docker-images:
+    name: Build & push Docker images
+    runs-on: ubuntu-latest
+    needs: [backend-build, frontend-build]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select image name
+        id: image
+        run: |
+          if [ "${{ matrix.component }}" = "backend" ]; then
+            echo "name=${{ env.BACKEND_IMAGE }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ env.FRONTEND_IMAGE }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract metadata (tags/labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.component }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+  deploy:
+    name: Deploy (optional, SSH + docker compose)
+    runs-on: ubuntu-latest
+    needs: [docker-images]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    steps:
+      - name: Pull latest images and restart the stack over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}/infra
+            docker compose pull
+            docker compose up -d
