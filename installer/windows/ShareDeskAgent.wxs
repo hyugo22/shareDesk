@@ -30,10 +30,16 @@
 
     <MajorUpgrade DowngradeErrorMessage="Une version plus récente de ShareDesk Agent est déjà installée." />
 
-    <!-- Propriétés fournies en ligne de commande / par la GPO (msiexec ... PROP=valeur) -->
-    <Property Id="SERVER_URL" Value="" />
-    <Property Id="MTLS_HOST" Value="" />
-    <Property Id="ENROLLMENT_TOKEN" Secure="yes" Value="" />
+    <!--
+      Propriétés fournies en ligne de commande / par la GPO (msiexec ... PROP=valeur).
+      Secure="yes" est nécessaire pour qu'elles restent visibles dans le
+      contexte de la CustomAction différée EnrollAndInstallService, qui
+      s'exécute élevée (Impersonate="no", en tant que SYSTEM) : sans ça, MSI
+      ne propage pas les propriétés publiques à travers cette frontière.
+    -->
+    <Property Id="SERVER_URL" Secure="yes" />
+    <Property Id="MTLS_HOST" Secure="yes" />
+    <Property Id="ENROLLMENT_TOKEN" Secure="yes" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="ShareDesk Agent" />
