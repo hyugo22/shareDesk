@@ -11,9 +11,9 @@ export default function Users() {
   async function load() {
     try {
       const [u, r] = await Promise.all([apiJSON<User[]>("/users"), apiJSON<Role[]>("/roles")]);
-      setUsers(u);
-      setRoles(r);
-      setForm((f) => ({ ...f, role_id: f.role_id || r[0]?.id || "" }));
+      setUsers(u ?? []);
+      setRoles(r ?? []);
+      setForm((f) => ({ ...f, role_id: f.role_id || r?.[0]?.id || "" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }

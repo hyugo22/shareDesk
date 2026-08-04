@@ -16,7 +16,7 @@ export default function AgentList() {
     async function load() {
       try {
         const data = await apiJSON<Agent[]>("/agents");
-        if (!cancelled) setAgents(data);
+        if (!cancelled) setAgents(data ?? []);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Erreur de chargement");
       }

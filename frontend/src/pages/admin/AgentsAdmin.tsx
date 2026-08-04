@@ -10,7 +10,7 @@ export default function AgentsAdmin() {
 
   async function load() {
     try {
-      setAgents(await apiJSON<Agent[]>("/agents"));
+      setAgents((await apiJSON<Agent[]>("/agents")) ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }

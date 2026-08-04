@@ -35,7 +35,7 @@ func (r *AgentRepo) List(ctx context.Context) ([]models.Agent, error) {
 	}
 	defer rows.Close()
 
-	var agents []models.Agent
+	agents := []models.Agent{}
 	for rows.Next() {
 		var a models.Agent
 		if err := rows.Scan(&a.ID, &a.Name, &a.Hostname, &a.OS, &a.OSVersion, &a.Arch, &a.AgentVersion,

@@ -46,7 +46,7 @@ func (r *SessionRepo) ListForAgent(ctx context.Context, agentID string) ([]model
 	}
 	defer rows.Close()
 
-	var sessions []models.ControlSession
+	sessions := []models.ControlSession{}
 	for rows.Next() {
 		var s models.ControlSession
 		if err := rows.Scan(&s.ID, &s.AgentID, &s.UserID, &s.Status, &s.StartedAt, &s.EndedAt); err != nil {

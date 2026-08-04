@@ -10,7 +10,7 @@ export default function AuditLogs() {
   async function load() {
     try {
       const qs = action ? `?action=${encodeURIComponent(action)}` : "";
-      setLogs(await apiJSON<AuditLog[]>(`/audit-logs${qs}`));
+      setLogs((await apiJSON<AuditLog[]>(`/audit-logs${qs}`)) ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }

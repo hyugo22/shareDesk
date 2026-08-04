@@ -19,7 +19,7 @@ func (r *RoleRepo) List(ctx context.Context) ([]models.Role, error) {
 	}
 	defer rows.Close()
 
-	var roles []models.Role
+	roles := []models.Role{}
 	for rows.Next() {
 		var role models.Role
 		if err := rows.Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem, &role.CreatedAt, &role.UpdatedAt); err != nil {
@@ -89,7 +89,7 @@ func (r *RoleRepo) PermissionsForRole(ctx context.Context, roleID string) ([]str
 	}
 	defer rows.Close()
 
-	var keys []string
+	keys := []string{}
 	for rows.Next() {
 		var k string
 		if err := rows.Scan(&k); err != nil {
@@ -107,7 +107,7 @@ func (r *RoleRepo) ListPermissions(ctx context.Context) ([]models.Permission, er
 	}
 	defer rows.Close()
 
-	var perms []models.Permission
+	perms := []models.Permission{}
 	for rows.Next() {
 		var p models.Permission
 		if err := rows.Scan(&p.ID, &p.Key, &p.Description); err != nil {

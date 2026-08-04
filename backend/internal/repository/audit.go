@@ -77,7 +77,7 @@ func (r *AuditRepo) List(ctx context.Context, f AuditFilter) ([]models.AuditLog,
 	}
 	defer rows.Close()
 
-	var logs []models.AuditLog
+	logs := []models.AuditLog{}
 	for rows.Next() {
 		var l models.AuditLog
 		var actorUserID, actorAgentID, ip, actorName *string

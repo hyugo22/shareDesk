@@ -12,8 +12,8 @@ export default function Roles() {
 
   async function load() {
     const [r, p] = await Promise.all([apiJSON<Role[]>("/roles"), apiJSON<Permission[]>("/permissions")]);
-    setRoles(r);
-    setPermissions(p);
+    setRoles(r ?? []);
+    setPermissions(p ?? []);
   }
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function Roles() {
   async function selectRole(role: Role) {
     setSelected(role);
     const perms = await apiJSON<string[]>(`/roles/${role.id}/permissions`);
-    setRolePerms(new Set(perms));
+    setRolePerms(new Set(perms ?? []));
   }
 
   function togglePerm(key: string) {
