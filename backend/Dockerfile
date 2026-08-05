@@ -12,6 +12,7 @@ RUN mkdir -p /out/data/ca && chown -R 65532:65532 /out/data
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/sharedesk-server /sharedesk-server
 COPY --from=build --chown=65532:65532 /out/data /data
+COPY --from=build --chown=65532:65532 /src/static/downloads /app/static/downloads
 USER nonroot:nonroot
 EXPOSE 8080 8443
 ENTRYPOINT ["/sharedesk-server"]

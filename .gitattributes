@@ -1,0 +1,3 @@
+# Binaires de l'agent publiés dans le repo (voir backend/static/downloads/) :
+# jamais de conversion de fin de ligne, jamais de diff textuel.
+backend/static/downloads/* -text -diff binary

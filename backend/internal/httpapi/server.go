@@ -33,9 +33,10 @@ type Server struct {
 	accessTTL      time.Duration
 	refreshTTL     time.Duration
 	allowedOrigins []string
+	downloadsDir   string
 }
 
-func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer *appcrypto.Sealer, caInst *ca.CA, hub *ws.Hub, accessTTL, refreshTTL time.Duration, allowedOrigins []string) *Server {
+func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer *appcrypto.Sealer, caInst *ca.CA, hub *ws.Hub, accessTTL, refreshTTL time.Duration, allowedOrigins []string, downloadsDir string) *Server {
 	return &Server{
 		repos:          repos,
 		jwt:            jwtIssuer,
@@ -49,6 +50,7 @@ func NewServer(repos *repository.Repositories, jwtIssuer *auth.JWTIssuer, sealer
 		accessTTL:      accessTTL,
 		refreshTTL:     refreshTTL,
 		allowedOrigins: allowedOrigins,
+		downloadsDir:   downloadsDir,
 	}
 }
 
@@ -67,6 +69,13 @@ func (s *Server) Routes() http.Handler {
 	}))
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+
+	// Binaires de l'agent (Windows/Linux/macOS, installeur MSI), publiés par
+	// la CI dans backend/static/downloads — servis directement par le site,
+	// pas de redirection vers un service tiers. Accès public : le secret de
+	// l'enrôlement est le token, pas le binaire générique de l'agent.
+	downloadsFS := http.StripPrefix("/downloads/", http.FileServer(http.Dir(s.downloadsDir)))
+	r.Get("/downloads/*", downloadsFS.ServeHTTP)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Réponses API jamais mises en cache par le navigateur : évite qu'une

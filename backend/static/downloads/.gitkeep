@@ -1,0 +1,4 @@
+Ce dossier contient les binaires de l'agent, publiés automatiquement par la
+CI (.github/workflows/ci.yml, job publish-agent-downloads) à chaque build
+réussi de main. Servi directement par le backend sur /downloads/<fichier>
+(voir internal/httpapi/server.go).

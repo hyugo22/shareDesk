@@ -12,6 +12,9 @@ agent/bin/
 *.exe
 *.test
 *.out
+# Binaires de l'agent publiés par la CI, servis sur /downloads/ (voir
+# backend/static/downloads/.gitkeep) : ceux-là doivent rester trackés.
+!backend/static/downloads/*
 
 # Node / frontend
 frontend/node_modules/

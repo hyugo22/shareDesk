@@ -30,6 +30,11 @@ type Config struct {
 
 	TURNRealm        string
 	TURNSharedSecret string
+
+	// Répertoire servi tel quel sur /downloads/ (binaires de l'agent,
+	// publiés par la CI — voir backend/static/downloads et
+	// .github/workflows/ci.yml, job publish-agent-downloads).
+	DownloadsDir string
 }
 
 func Load() (*Config, error) {
@@ -40,6 +45,7 @@ func Load() (*Config, error) {
 		CAKeyPassphrase:  mustGetEnv("CA_KEY_PASSPHRASE"),
 		TURNRealm:        getEnv("TURN_REALM", "sharedesk.local"),
 		TURNSharedSecret: os.Getenv("TURN_SHARED_SECRET"),
+		DownloadsDir:     getEnv("AGENT_DOWNLOADS_DIR", "/app/static/downloads"),
 	}
 	cfg.CORSAllowedOrigins = splitAndTrim(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:8081"))
 

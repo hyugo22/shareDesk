@@ -102,3 +102,11 @@ export async function apiJSON<T>(path: string, options: RequestInit = {}): Promi
 export function wsBaseURL(): string {
   return import.meta.env.VITE_WS_BASE_URL ?? `${location.origin.replace(/^http/, "ws")}/api/v1`;
 }
+
+// Les binaires de l'agent sont servis par le backend lui-même sur
+// /downloads/ (voir internal/httpapi/server.go), pas de dépendance à un
+// service tiers. /downloads/ n'est pas sous /api/v1, d'où le retrait du
+// suffixe pour obtenir l'origine du backend.
+export function downloadsBaseURL(): string {
+  return API_BASE.replace(/\/api\/v1\/?$/, "");
+}

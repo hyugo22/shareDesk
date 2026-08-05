@@ -139,36 +139,48 @@ jobs:
           path: installer/windows/ShareDeskAgent.msi
           retention-days: 30
 
-  publish-agent-release:
-    name: Publish agent downloads (GitHub Release)
+  commit-agent-downloads:
+    name: Commit agent binaries into the repo
     runs-on: ubuntu-latest
     needs: [agent-build, agent-build-macos, windows-agent-installer]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
       - uses: actions/download-artifact@v4
         with:
           path: downloads
           merge-multiple: true
 
-      # Piste de téléchargement "roulante" (pas une release versionnée) :
-      # la page Ajouter une machine du frontend pointe en dur vers
-      # /releases/latest/download/<fichier>, qui doit toujours résoudre vers
-      # le dernier build réussi de main.
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: agent-latest
-          name: "Agent ShareDesk — dernier build (main)"
-          body: |
-            Build automatique généré depuis `main` (commit ${{ github.sha }}).
-            Pas une release versionnée : ce tag est mis à jour à chaque push sur `main`.
-          make_latest: "true"
-          files: |
-            downloads/sharedesk-agent-windows-amd64.exe
-            downloads/sharedesk-agent-linux-amd64
-            downloads/sharedesk-agent-darwin-arm64
-            downloads/ShareDeskAgent.msi
+      # Servi directement par le backend sur /downloads/ (voir
+      # internal/httpapi/server.go) — pas de dépendance à un service tiers —
+      # et committé dans le repo pour rester consultable/récupérable depuis
+      # GitHub directement. actions/download-artifact ne préserve pas
+      # toujours le bit exécutable sur les binaires Linux/macOS, d'où le
+      # chmod explicite.
+      - name: Update backend/static/downloads
+        run: |
+          chmod +x downloads/sharedesk-agent-linux-amd64 downloads/sharedesk-agent-darwin-arm64
+          cp downloads/sharedesk-agent-windows-amd64.exe backend/static/downloads/
+          cp downloads/sharedesk-agent-linux-amd64 backend/static/downloads/
+          cp downloads/sharedesk-agent-darwin-arm64 backend/static/downloads/
+          cp downloads/ShareDeskAgent.msi backend/static/downloads/
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/static/downloads
+          if git diff --cached --quiet; then
+            echo "Binaires inchangés, rien à committer."
+            exit 0
+          fi
+          git commit -m "chore: update agent downloads [skip ci]"
+          git push origin HEAD:main
 
   docker-images:
     name: Build & push Docker images

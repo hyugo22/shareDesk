@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiJSON } from "../api/client";
-
-// Piste de téléchargement "roulante" publiée par la CI à chaque build réussi
-// de main (tag agent-latest, pas une release versionnée) — voir le job
-// publish-agent-release dans .github/workflows/ci.yml.
-const RELEASE_BASE = "https://github.com/hyugo22/shareDesk/releases/latest/download";
+import { apiJSON, downloadsBaseURL } from "../api/client";
 
 export default function AddMachine() {
   const navigate = useNavigate();
+  const downloadBase = `${downloadsBaseURL()}/downloads`;
   const [description, setDescription] = useState("");
   const [ttlMinutes, setTtlMinutes] = useState(60);
   const [token, setToken] = useState<string | null>(null);
@@ -90,10 +86,10 @@ export default function AddMachine() {
 
           <h2>1. Télécharger l'agent</h2>
           <div className="button-row">
-            <a className="button-link" href={`${RELEASE_BASE}/ShareDeskAgent.msi`}>Windows (installeur .msi)</a>
-            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-windows-amd64.exe`}>Windows (.exe seul)</a>
-            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-linux-amd64`}>Linux (amd64)</a>
-            <a className="button-link" href={`${RELEASE_BASE}/sharedesk-agent-darwin-arm64`}>macOS (Apple Silicon)</a>
+            <a className="button-link" href={`${downloadBase}/ShareDeskAgent.msi`}>Windows (installeur .msi)</a>
+            <a className="button-link" href={`${downloadBase}/sharedesk-agent-windows-amd64.exe`}>Windows (.exe seul)</a>
+            <a className="button-link" href={`${downloadBase}/sharedesk-agent-linux-amd64`}>Linux (amd64)</a>
+            <a className="button-link" href={`${downloadBase}/sharedesk-agent-darwin-arm64`}>macOS (Apple Silicon)</a>
           </div>
           <p className="hint">
             Publiés automatiquement par la CI à chaque mise à jour de la plateforme.
