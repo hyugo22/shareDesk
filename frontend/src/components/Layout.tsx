@@ -11,8 +11,7 @@ export default function Layout() {
         <span className="brand">ShareDesk</span>
         <nav>
           <NavLink to="/agents">Machines</NavLink>
-          {hasPermission("audit.read") && <NavLink to="/admin/audit">Logs</NavLink>}
-          {(hasPermission("users.manage") || hasPermission("roles.manage") || hasPermission("settings.manage")) && (
+          {(hasPermission("users.manage") || hasPermission("roles.manage") || hasPermission("settings.manage") || hasPermission("audit.read")) && (
             <NavLink to="/admin">Administration</NavLink>
           )}
         </nav>

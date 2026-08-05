@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { apiJSON } from "./api/client";
 import Layout from "./components/Layout";
 import { RequireAuth, RequirePermission } from "./components/RequireAuth";
+import { useAuth } from "./auth/AuthContext";
 import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import AgentList from "./pages/AgentList";
@@ -14,6 +15,21 @@ import Roles from "./pages/admin/Roles";
 import AgentsAdmin from "./pages/admin/AgentsAdmin";
 import AuditLogs from "./pages/admin/AuditLogs";
 import LdapSettings from "./pages/admin/LdapSettings";
+
+/** Redirige vers le premier onglet Administration auquel l'utilisateur a
+ * accès (plutôt que "users" en dur, plus forcément atteignable maintenant
+ * que "Administration" peut n'accorder que audit.read). */
+function AdminIndexRedirect() {
+  const { hasPermission } = useAuth();
+  const firstTab =
+    (hasPermission("users.manage") && "users") ||
+    (hasPermission("roles.manage") && "roles") ||
+    (hasPermission("agents.manage") && "agents") ||
+    (hasPermission("audit.read") && "audit") ||
+    (hasPermission("ldap.manage") && "ldap") ||
+    "users";
+  return <Navigate to={firstTab} replace />;
+}
 
 /** true tant qu'aucun utilisateur n'existe en base : l'assistant de
  * configuration initiale doit alors passer avant toute autre page. */
@@ -54,7 +70,7 @@ export default function App() {
         <Route path="/sessions/:sessionId" element={<SessionViewer />} />
 
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="users" replace />} />
+          <Route index element={<AdminIndexRedirect />} />
           <Route path="users" element={<RequirePermission perm="users.manage"><Users /></RequirePermission>} />
           <Route path="roles" element={<RequirePermission perm="roles.manage"><Roles /></RequirePermission>} />
           <Route path="agents" element={<RequirePermission perm="agents.manage"><AgentsAdmin /></RequirePermission>} />
