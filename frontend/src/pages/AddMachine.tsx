@@ -97,12 +97,20 @@ export default function AddMachine() {
 
           <h2>2. Installer</h2>
           <p><strong>Windows — installeur MSI (recommandé, silencieux, déployable par GPO)</strong></p>
-          <pre className="code-block">
-{`msiexec /i ShareDeskAgent.msi /qn ^
-  SERVER_URL="https://${serverHost}:8080" ^
-  MTLS_HOST="${serverHost}:8443" ^
-  ENROLLMENT_TOKEN="${token}"`}
-          </pre>
+          <p className="hint">
+            Ne pas double-cliquer sur le .msi : sans ces paramètres, il s'installe
+            « avec succès » sans rien faire. Depuis PowerShell ou cmd (une seule
+            ligne, copier-coller tel quel — fonctionne dans les deux) :
+          </p>
+          {(() => {
+            const msiCmd = `msiexec /i ShareDeskAgent.msi /qn SERVER_URL="https://${serverHost}:8080" MTLS_HOST="${serverHost}:8443" ENROLLMENT_TOKEN="${token}"`;
+            return (
+              <div className="token-display">
+                <code>{msiCmd}</code>
+                <button type="button" onClick={() => copy(msiCmd)}>Copier</button>
+              </div>
+            );
+          })()}
           <p className="hint">
             Installe et démarre automatiquement le service Windows « ShareDesk Agent »,
             avec une icône de statut dans la zone de notification (flèche ↑ à côté de
@@ -112,16 +120,18 @@ export default function AddMachine() {
 
           <p><strong>Windows — exécutable seul (si tu ne peux pas utiliser le MSI)</strong></p>
           <p className="hint">
-            Ne pas double-cliquer dessus : ça ouvre puis referme aussitôt une
-            fenêtre sans rien faire, faute de paramètres. Lance-le depuis une
-            invite de commandes (idéalement en administrateur) :
+            Ne pas double-cliquer dessus non plus, même raison. Depuis PowerShell
+            ou cmd, dans le dossier où l'exe a été téléchargé :
           </p>
-          <pre className="code-block">
-{`sharedesk-agent-windows-amd64.exe install ^
-  --server-url="https://${serverHost}:8080" ^
-  --mtls-host="${serverHost}:8443" ^
-  --token="${token}"`}
-          </pre>
+          {(() => {
+            const exeCmd = `.\\sharedesk-agent-windows-amd64.exe install --server-url="https://${serverHost}:8080" --mtls-host="${serverHost}:8443" --token="${token}"`;
+            return (
+              <div className="token-display">
+                <code>{exeCmd}</code>
+                <button type="button" onClick={() => copy(exeCmd)}>Copier</button>
+              </div>
+            );
+          })()}
           <p className="hint">Fait exactement la même chose que le MSI : enrôlement puis installation du service Windows.</p>
 
           <p><strong>Linux / macOS — exécution manuelle</strong></p>
