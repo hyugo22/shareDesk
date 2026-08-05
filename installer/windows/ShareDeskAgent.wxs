@@ -46,6 +46,18 @@
     <Property Id="MTLS_HOST" Secure="yes" />
     <Property Id="ENROLLMENT_TOKEN" Secure="yes" />
 
+    <!--
+      Sans assistant graphique (voir le commentaire d'en-tête : usage GPO/
+      ligne de commande), un double-clic direct sur le MSI installait les
+      fichiers "avec succès" sans jamais lancer l'enrôlement ni le service,
+      faute de propriétés — aucune erreur visible, juste rien qui ne se
+      passe. Ce Launch Condition refuse maintenant l'installation avec un
+      message explicite tant que les trois propriétés ne sont pas fournies
+      (sauf en mise à jour/réparation d'une installation existante).
+    -->
+    <Launch Condition="Installed OR (SERVER_URL &lt;&gt; &quot;&quot; AND MTLS_HOST &lt;&gt; &quot;&quot; AND ENROLLMENT_TOKEN &lt;&gt; &quot;&quot;)"
+            Message="Cet installeur ne fonctionne pas en double-clic direct. Lancez-le depuis une invite de commandes avec les paramètres d'enrôlement : msiexec /i ShareDeskAgent.msi SERVER_URL=&quot;https://VOTRE_SERVEUR:8080&quot; MTLS_HOST=&quot;VOTRE_SERVEUR:8443&quot; ENROLLMENT_TOKEN=&quot;TOKEN_A_USAGE_UNIQUE&quot; (valeurs disponibles sur la page Ajouter une machine de ShareDesk)." />
+
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="ShareDesk Agent" />
     </StandardDirectory>
