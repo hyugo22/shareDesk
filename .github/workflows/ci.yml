@@ -151,10 +151,19 @@ jobs:
         with:
           ref: main
 
+      # Téléchargements ciblés par nom : sans filtre, download-artifact
+      # récupère TOUS les artefacts du run, y compris les .dockerbuild
+      # (attestations/cache) auto-générés par le job docker-images qui
+      # tourne en parallèle dans le même run — ça a fait échouer le
+      # téléchargement précédemment.
       - uses: actions/download-artifact@v4
-        with:
-          path: downloads
-          merge-multiple: true
+        with: { name: sharedesk-agent-windows-amd64.exe, path: downloads }
+      - uses: actions/download-artifact@v4
+        with: { name: sharedesk-agent-linux-amd64, path: downloads }
+      - uses: actions/download-artifact@v4
+        with: { name: sharedesk-agent-darwin-arm64, path: downloads }
+      - uses: actions/download-artifact@v4
+        with: { name: ShareDeskAgent.msi, path: downloads }
 
       # Servi directement par le backend sur /downloads/ (voir
       # internal/httpapi/server.go) — pas de dépendance à un service tiers —
