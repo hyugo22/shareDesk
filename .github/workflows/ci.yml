@@ -111,13 +111,15 @@ jobs:
           go-version: "1.25"
           cache-dependency-path: agent/go.sum
 
-      - name: Build agent binary (windows/amd64)
+      - name: Build agent + tray binaries (windows/amd64)
         working-directory: agent
         env:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: "0"
-        run: go build -o ../installer/windows/sharedesk-agent.exe ./cmd/agent
+        run: |
+          go build -o ../installer/windows/sharedesk-agent.exe ./cmd/agent
+          go build -o ../installer/windows/sharedesk-agent-tray.exe ./cmd/tray
 
       # WiX ne garantit un comportement correct que sur Windows (voir
       # installer/windows/README.md) : ce job tourne donc sur un runner
@@ -131,12 +133,19 @@ jobs:
           wix build ShareDeskAgent.wxs `
             -d AgentVersion=0.1.${{ github.run_number }} `
             -d AgentBinaryPath=sharedesk-agent.exe `
+            -d TrayBinaryPath=sharedesk-agent-tray.exe `
             -o ShareDeskAgent.msi
 
       - uses: actions/upload-artifact@v4
         with:
           name: ShareDeskAgent.msi
           path: installer/windows/ShareDeskAgent.msi
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sharedesk-agent-tray.exe
+          path: installer/windows/sharedesk-agent-tray.exe
           retention-days: 30
 
   commit-agent-downloads:
@@ -164,6 +173,8 @@ jobs:
         with: { name: sharedesk-agent-darwin-arm64, path: downloads }
       - uses: actions/download-artifact@v4
         with: { name: ShareDeskAgent.msi, path: downloads }
+      - uses: actions/download-artifact@v4
+        with: { name: sharedesk-agent-tray.exe, path: downloads }
 
       # Servi directement par le backend sur /downloads/ (voir
       # internal/httpapi/server.go) — pas de dépendance à un service tiers —
@@ -178,6 +189,7 @@ jobs:
           cp downloads/sharedesk-agent-linux-amd64 backend/static/downloads/
           cp downloads/sharedesk-agent-darwin-arm64 backend/static/downloads/
           cp downloads/ShareDeskAgent.msi backend/static/downloads/
+          cp downloads/sharedesk-agent-tray.exe backend/static/downloads/
 
       - name: Commit and push if changed
         run: |

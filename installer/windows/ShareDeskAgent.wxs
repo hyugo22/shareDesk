@@ -8,11 +8,16 @@
       MTLS_HOST="sharedesk.example.com:8443" ^
       ENROLLMENT_TOKEN="<token à usage unique généré depuis l'interface>"
 
-  L'installation copie le binaire puis délègue l'enrôlement et
+  L'installation copie le binaire de l'agent et celui de l'icône de zone de
+  notification (agent/cmd/tray), puis délègue l'enrôlement et
   l'enregistrement du service Windows à `sharedesk-agent.exe install`
   (github.com/kardianos/service) — voir agent/cmd/agent/main.go.
   ENROLLMENT_TOKEN n'est utilisé qu'une fois, à l'installation ; il n'est
   jamais persisté par le MSI ni par l'agent au-delà de l'échange initial.
+
+  Variables de build requises (wix build -d ...) :
+    AgentVersion, AgentBinaryPath (sharedesk-agent.exe), TrayBinaryPath
+    (sharedesk-agent-tray.exe)
 
   Compilé via WiX Toolset v5 (`wix build`), sur un runner Windows (WiX ne
   garantit pas de fonctionner correctement hors Windows) — voir
@@ -48,6 +53,16 @@
     <ComponentGroup Id="AgentFiles" Directory="INSTALLFOLDER">
       <Component Id="AgentBinary" Guid="6b6e3f9a-6c9d-4b8e-9d2c-6f3a2b7e8a41">
         <File Id="AgentExe" Source="$(var.AgentBinaryPath)" KeyPath="yes" />
+      </Component>
+      <!--
+        Icône de zone de notification (agent/cmd/tray) : programme séparé du
+        service, car un service Windows tourne en Session 0 et ne peut pas
+        afficher d'UI sur le bureau de l'utilisateur connecté. Enregistrée au
+        démarrage de session par EnrollAndInstallService (clé Run HKLM), pas
+        ici — voir agent/cmd/agent/tray_windows.go.
+      -->
+      <Component Id="TrayBinary" Guid="a3f1c9e2-7b4d-4a1e-9c6f-2d8b5e0f3a17">
+        <File Id="TrayExe" Source="$(var.TrayBinaryPath)" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 

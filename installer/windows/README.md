@@ -9,9 +9,10 @@ Windows, il ne doit donc pas être compilé ailleurs.
 ## Construction manuelle (sur Windows)
 
 ```powershell
-# Build du binaire agent
+# Build des binaires agent + icône de zone de notification
 cd agent
 go build -o ..\installer\windows\sharedesk-agent.exe .\cmd\agent
+go build -o ..\installer\windows\sharedesk-agent-tray.exe .\cmd\tray
 
 # Installation de l'outil WiX (une fois)
 dotnet tool install --global wix --version 5.0.2
@@ -20,6 +21,7 @@ cd ..\installer\windows
 wix build ShareDeskAgent.wxs `
   -d AgentVersion=0.1.0 `
   -d AgentBinaryPath=sharedesk-agent.exe `
+  -d TrayBinaryPath=sharedesk-agent-tray.exe `
   -o ShareDeskAgent.msi
 ```
 
@@ -32,13 +34,18 @@ msiexec /i ShareDeskAgent.msi /qn `
   ENROLLMENT_TOKEN="<token généré depuis Administration > Agents > Ajouter une machine>"
 ```
 
-L'installeur copie l'exécutable dans `Program Files\ShareDesk Agent\`, puis
+L'installeur copie les exécutables dans `Program Files\ShareDesk Agent\`, puis
 délègue à `sharedesk-agent.exe install` (voir
 [`agent/cmd/agent/main.go`](../../agent/cmd/agent/main.go)) l'enrôlement
-auprès du serveur et l'enregistrement du service Windows
-(`github.com/kardianos/service`). Le token n'est utilisé qu'une fois, à cet
-instant précis — il n'est jamais écrit sur disque par le MSI ni conservé par
-l'agent au-delà de l'échange initial.
+auprès du serveur, l'enregistrement du service Windows
+(`github.com/kardianos/service`), et l'inscription de l'icône de zone de
+notification (`sharedesk-agent-tray.exe`, voir
+[`agent/cmd/tray`](../../agent/cmd/tray)) au démarrage de session (clé
+Run HKLM — visible à la prochaine connexion, un service tournant en
+Session 0 ne pouvant pas afficher d'UI sur le bureau de l'utilisateur). Le
+token n'est utilisé qu'une fois, à cet instant précis — il n'est jamais
+écrit sur disque par le MSI ni conservé par l'agent au-delà de l'échange
+initial.
 
 Désinstallation : `msiexec /x ShareDeskAgent.msi /qn` arrête et supprime le
 service avant de retirer les fichiers (l'identité mTLS de l'agent, elle,

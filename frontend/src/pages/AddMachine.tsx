@@ -96,14 +96,33 @@ export default function AddMachine() {
           </p>
 
           <h2>2. Installer</h2>
-          <p><strong>Windows — installeur MSI (silencieux, déployable par GPO)</strong></p>
+          <p><strong>Windows — installeur MSI (recommandé, silencieux, déployable par GPO)</strong></p>
           <pre className="code-block">
 {`msiexec /i ShareDeskAgent.msi /qn ^
   SERVER_URL="https://${serverHost}:8080" ^
   MTLS_HOST="${serverHost}:8443" ^
   ENROLLMENT_TOKEN="${token}"`}
           </pre>
-          <p className="hint">Installe et démarre automatiquement le service Windows « ShareDesk Agent ».</p>
+          <p className="hint">
+            Installe et démarre automatiquement le service Windows « ShareDesk Agent »,
+            avec une icône de statut dans la zone de notification (flèche ↑ à côté de
+            l'horloge) visible à la prochaine connexion de l'utilisateur — vert
+            connecté, bleu session en cours, rouge déconnecté.
+          </p>
+
+          <p><strong>Windows — exécutable seul (si tu ne peux pas utiliser le MSI)</strong></p>
+          <p className="hint">
+            Ne pas double-cliquer dessus : ça ouvre puis referme aussitôt une
+            fenêtre sans rien faire, faute de paramètres. Lance-le depuis une
+            invite de commandes (idéalement en administrateur) :
+          </p>
+          <pre className="code-block">
+{`sharedesk-agent-windows-amd64.exe install ^
+  --server-url="https://${serverHost}:8080" ^
+  --mtls-host="${serverHost}:8443" ^
+  --token="${token}"`}
+          </pre>
+          <p className="hint">Fait exactement la même chose que le MSI : enrôlement puis installation du service Windows.</p>
 
           <p><strong>Linux / macOS — exécution manuelle</strong></p>
           <pre className="code-block">

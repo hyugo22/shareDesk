@@ -10,6 +10,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
@@ -27,11 +28,16 @@ import (
 	"github.com/hyugo22/sharedesk/agent/internal/identity"
 	"github.com/hyugo22/sharedesk/agent/internal/inject"
 	"github.com/hyugo22/sharedesk/agent/internal/rtcsession"
+	"github.com/hyugo22/sharedesk/agent/internal/statusapi"
 	"github.com/hyugo22/sharedesk/agent/internal/svcconfig"
 	"github.com/hyugo22/sharedesk/agent/internal/wsclient"
 )
 
 const agentVersion = "0.1.0-dev"
+
+// trayExeName est le nom attendu de l'icône de zone de notification (voir
+// agent/cmd/tray), installée à côté du binaire de l'agent par le MSI.
+const trayExeName = "sharedesk-agent-tray.exe"
 
 var svcSpec = &service.Config{
 	Name:        "ShareDeskAgent",
@@ -122,6 +128,17 @@ func cmdInstall(args []string) {
 		log.Fatalf("démarrage du service: %v", err)
 	}
 	fmt.Println("Service installé et démarré.")
+
+	if exePath, err := os.Executable(); err == nil {
+		trayPath := filepath.Join(filepath.Dir(exePath), trayExeName)
+		if _, statErr := os.Stat(trayPath); statErr == nil {
+			if err := registerTrayAutostart(trayPath); err != nil {
+				fmt.Fprintf(os.Stderr, "avertissement: icône de zone de notification non enregistrée au démarrage: %v\n", err)
+			} else {
+				fmt.Println("Icône de statut enregistrée (visible à la prochaine connexion).")
+			}
+		}
+	}
 }
 
 func cmdServiceControl(action string) {
@@ -141,9 +158,17 @@ func cmdServiceControl(action string) {
 type program struct {
 	cancel context.CancelFunc
 	logger service.Logger
+	status *statusapi.Store
 }
 
 func (p *program) Start(s service.Service) error {
+	p.status = statusapi.NewStore()
+	go func() {
+		if err := p.status.ListenAndServe(); err != nil {
+			p.logf("API de statut locale indisponible (port %d déjà utilisé ?): %v", statusapi.DefaultPort, err)
+		}
+	}()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 	go p.run(ctx)
@@ -171,10 +196,13 @@ func (p *program) run(ctx context.Context) {
 
 	id, enrollErr := ensureEnrolled(dataDir, serverURL)
 	if enrollErr != nil {
-		p.logf("enrôlement: %v", enrollErr)
-		log.Fatalf("enrôlement: %v", enrollErr)
+		p.fatal(fmt.Errorf("enrôlement: %w", enrollErr))
+		return
 	}
 	p.logf("agent enrôlé (id=%s)", id.AgentID)
+	p.status.Update(func(st *statusapi.Status) {
+		st.AgentID, st.Server = id.AgentID, serverURL
+	})
 
 	ice := iceServers()
 	for {
@@ -185,6 +213,9 @@ func (p *program) run(ctx context.Context) {
 		}
 		if err := runSession(ctx, id, mtlsHost, ice, p); err != nil {
 			p.logf("connexion au serveur perdue: %v — nouvelle tentative dans 10s", err)
+			p.status.Update(func(st *statusapi.Status) {
+				st.Connected, st.SessionActive, st.LastError = false, false, err.Error()
+			})
 		}
 		select {
 		case <-ctx.Done():
@@ -201,11 +232,37 @@ func (p *program) logf(format string, args ...any) {
 	}
 }
 
+// fatal signale une erreur de démarrage irrécupérable. En exécution
+// interactive (double-clic, terminal manuel — pas un service installé), la
+// fenêtre de console se refermerait sinon instantanément sur un simple
+// os.Exit : on affiche donc un message explicite et on attend une touche.
+func (p *program) fatal(err error) {
+	log.Printf("erreur fatale au démarrage: %v", err)
+	if p.logger != nil {
+		_ = p.logger.Error(err.Error())
+	}
+	if p.status != nil {
+		p.status.Update(func(st *statusapi.Status) { st.LastError = err.Error() })
+	}
+	if service.Interactive() {
+		fmt.Fprintln(os.Stderr, "\nL'agent n'a pas pu démarrer :", err)
+		fmt.Fprintln(os.Stderr, "\nCet exécutable ne fonctionne pas en double-clic direct : il doit être")
+		fmt.Fprintln(os.Stderr, "installé avec les paramètres d'enrôlement, depuis une invite de commandes :")
+		fmt.Fprintln(os.Stderr, `  sharedesk-agent.exe install --server-url="https://VOTRE_SERVEUR:8080" --mtls-host="VOTRE_SERVEUR:8443" --token="TOKEN_A_USAGE_UNIQUE"`)
+		fmt.Fprintln(os.Stderr, "\nAppuie sur Entrée pour fermer…")
+		_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+	}
+	os.Exit(1)
+}
+
 func ensureEnrolled(dataDir, serverURL string) (*identity.Identity, error) {
 	if identity.IsEnrolled(dataDir) {
 		return identity.Load(dataDir)
 	}
-	token := mustGetEnv("ENROLLMENT_TOKEN")
+	token, err := mustGetEnv("ENROLLMENT_TOKEN")
+	if err != nil {
+		return nil, err
+	}
 	hostname, _ := os.Hostname()
 	return identity.Enroll(serverURL, token, hostname, runtime.GOOS, "", runtime.GOARCH, agentVersion, dataDir)
 }
@@ -218,6 +275,8 @@ func runSession(ctx context.Context, id *identity.Identity, mtlsHost string, ice
 	}
 	defer client.Close()
 	p.logf("connecté au serveur (%s)", mtlsHost)
+	p.status.Update(func(st *statusapi.Status) { st.Connected, st.LastError = true, "" })
+	defer p.status.Update(func(st *statusapi.Status) { st.Connected, st.SessionActive = false, false })
 
 	cap := capture.NewProvider()
 	inj := inject.NewProvider()
@@ -228,6 +287,7 @@ func runSession(ctx context.Context, id *identity.Identity, mtlsHost string, ice
 			current.Close()
 			current = nil
 		}
+		p.status.Update(func(st *statusapi.Status) { st.SessionActive = false })
 	}
 	defer closeCurrent()
 
@@ -237,7 +297,7 @@ func runSession(ctx context.Context, id *identity.Identity, mtlsHost string, ice
 	}()
 
 	for msg := range client.Message {
-		if err := handleSignal(msg, &current, cap, inj, ice, client); err != nil {
+		if err := handleSignal(msg, &current, cap, inj, ice, client, p.status); err != nil {
 			p.logf("%v", err)
 		}
 	}
@@ -245,7 +305,7 @@ func runSession(ctx context.Context, id *identity.Identity, mtlsHost string, ice
 	return nil
 }
 
-func handleSignal(msg wsclient.Message, current **rtcsession.Session, cap capture.Provider, inj inject.Provider, ice []webrtc.ICEServer, client *wsclient.Client) error {
+func handleSignal(msg wsclient.Message, current **rtcsession.Session, cap capture.Provider, inj inject.Provider, ice []webrtc.ICEServer, client *wsclient.Client, status *statusapi.Store) error {
 	switch msg.Type {
 	case "offer":
 		if *current != nil {
@@ -273,6 +333,7 @@ func handleSignal(msg wsclient.Message, current **rtcsession.Session, cap captur
 			return fmt.Errorf("traitement offer: %w", err)
 		}
 		*current = sess
+		status.Update(func(st *statusapi.Status) { st.SessionActive = true })
 		answerPayload, _ := json.Marshal(map[string]string{"sdp": answerSDP})
 		return client.Send(wsclient.Message{Type: "answer", SessionID: sessionID, Payload: answerPayload})
 
@@ -286,6 +347,7 @@ func handleSignal(msg wsclient.Message, current **rtcsession.Session, cap captur
 			(*current).Close()
 			*current = nil
 		}
+		status.Update(func(st *statusapi.Status) { st.SessionActive = false })
 	}
 	return nil
 }
@@ -318,10 +380,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func mustGetEnv(key string) string {
+func mustGetEnv(key string) (string, error) {
 	v, ok := os.LookupEnv(key)
 	if !ok || v == "" {
-		log.Fatalf("variable d'environnement requise manquante: %s", key)
+		return "", fmt.Errorf("variable d'environnement requise manquante: %s", key)
 	}
-	return v
+	return v, nil
 }
